@@ -1,0 +1,32 @@
+name: Deploy URL Shortener
+on:
+  push:
+    branches: [ main, staging, dev ]
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: my-tf-state-bucket
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with: { node-version: '18' }
+      - run: |
+          cd lambda
+          npm ci
+          npm run build
+      - name: Package Lambda
+        run: |
+          zip -j build/lambda.zip lambda/dist/index.js
+      - name: Terraform Init & Apply
+        uses: hashicorp/setup-terraform@v2
+      - run: |
+          terraform workspace select ${{ github.ref_name }} || terraform workspace new ${{ github.ref_name }}
+          terraform init
+          terraform apply -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
