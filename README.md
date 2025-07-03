@@ -1,2 +1,0 @@
-# babbel
-Take Home test
